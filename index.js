@@ -38,6 +38,7 @@ export default class Drawer extends Component {
     acceptDoubleTap: PropTypes.bool,
     acceptPan: PropTypes.bool,
     acceptTap: PropTypes.bool,
+    acceptPanOnDrawer: PropTypes.bool,
     captureGestures: PropTypes.oneOf([true, false, 'open', 'closed']),
     children: PropTypes.node,
     closedDrawerOffset: PropTypes.oneOfType([PropTypes.number, PropTypes.func]),
@@ -90,6 +91,7 @@ export default class Drawer extends Component {
     acceptDoubleTap: false,
     acceptTap: false,
     acceptPan: true,
+    acceptPanOnDrawer: true,
     tapToClose: false,
 
     styles: {},
@@ -190,7 +192,7 @@ export default class Drawer extends Component {
         onMoveShouldSetPanResponderCapture: this.onMoveShouldSetPanResponderCapture,
         onPanResponderMove: this.onPanResponderMove,
         onPanResponderRelease: this.onPanResponderRelease,
-	onPanResponderTerminate: this.onPanResponderTerminate
+        onPanResponderTerminate: this.onPanResponderTerminate
       })
     }
 
@@ -244,7 +246,7 @@ export default class Drawer extends Component {
     this._panning = false
     this.shouldOpenDrawer(gestureState.dx) ? this.open() : this.close()
   };
-    
+
   onStartShouldSetPanResponderCapture = (e, gestureState) => {
     if (this.shouldCaptureGestures()) return this.processShouldSet(e, gestureState)
     return false
@@ -304,13 +306,19 @@ export default class Drawer extends Component {
 
   processMoveShouldSet = (e, gestureState) => {
     let inMask = this.testPanResponderMask(e, gestureState)
-    if (!inMask) return false
+    if (!inMask && (!this.props.acceptPanOnDrawer || this._open === false )) return false
     if (!this.props.acceptPan) return false
 
+    const { dx, dy } = gestureState;
+    const event = {
+      dx: Math.floor(dx) - 5,
+      dy: Math.floor(dy),
+    }
+
     if (!this.props.negotiatePan || this.props.disabled || !this.props.acceptPan || this._panning) return false
-    let swipeToLeft = (gestureState.dx < 0) ? true : false
-    let swipeToRight = (gestureState.dx > 0) ? true : false
-    let swipeUpDown = (Math.abs(gestureState.dy) >= Math.abs(gestureState.dx)) ? true : false
+    let swipeToLeft = (event.dx < 0) ? true : false
+    let swipeToRight = (event.dx > 0) ? true : false
+    let swipeUpDown = (Math.abs(event.dy) >= Math.abs(event.dx)) ? true : false
     let swipeInCloseDirection = (this.props.side === 'left') ? swipeToLeft : swipeToRight
     if (swipeUpDown || (this._open && !swipeInCloseDirection) || (!this._open && swipeInCloseDirection)) {
       return false
@@ -398,7 +406,7 @@ export default class Drawer extends Component {
         if(typeof type === 'function') {
           type() // this is actually a callback
         } else cb && cb()
-        
+
       }
     })
   };
@@ -518,7 +526,7 @@ export default class Drawer extends Component {
         key="drawerContainer"
         onLayout={this.handleSetViewport}
         style={this.stylesheet.container}
-        >
+      >
         {first}
         {second}
       </View>
@@ -532,13 +540,13 @@ export default class Drawer extends Component {
         key="main"
         ref={c => this.main = c}
         style={[this.stylesheet.main, {height: this.getHeight(), width: this.getMainWidth()}]}
-        >
+      >
         {this.props.children}
         <View
           pointerEvents={ this._open && this.shouldCaptureGestures() ? 'auto' : 'none' }
           ref={c => this.mainOverlay = c}
           style={[styles.overlay, this.props.styles && this.props.styles.mainOverlay]}
-          />
+        />
       </View>
     )
   }
@@ -551,13 +559,13 @@ export default class Drawer extends Component {
         ref={c => this.drawer = c}
         elevation={this.props.elevation}
         style={[this.stylesheet.drawer, {height: this.getHeight(), width: this.getDrawerWidth()}]}
-        >
+      >
         {this.props.content}
         <View
           pointerEvents={ !this._open && this.shouldCaptureGestures() ? 'auto' : 'none' }
           ref={c => this.drawerOverlay = c}
           style={[styles.overlay, this.props.styles && this.props.styles.drawerOverlay]}
-          />
+        />
       </View>
     )
   }
